@@ -3,6 +3,7 @@ import tkinter
 class Application(tkinter.Frame):
     def __init__(self, title, master=None):
         tkinter.Frame.__init__(self, master)
+        self.master.geometry("800x600")
         self.master.title(title)
         self.grid()
         self.createWidgets()
@@ -14,7 +15,6 @@ class Application(tkinter.Frame):
 def main():
     app = Application("Test")
     app.mainloop()
-
 
 if __name__ == "__main__":
     main()
