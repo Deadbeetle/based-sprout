@@ -25,7 +25,7 @@ class XmlTk(sax.ContentHandler):
         self.named_widgets = dict()
         sax.parse(filename, self)
 
-    def updateText(self, widgetname, stringvarname):
+    def updateText(self, widgetname, stringvarname, append=False):
         """Helper function for updating text with buttons.
 
         :param widgetname: The name of the widget to update.
@@ -33,14 +33,19 @@ class XmlTk(sax.ContentHandler):
         :param stringvarname: The name of the StringVar to get the new text from.
         :type stringvarname: str
         """
-        def action(widget=self.named_widgets[widgetname],
-                   stringvar=self.named_widgets[stringvarname]):
-            widget.config(text=stringvar.get())
+        if append:
+            def action(widget=self.named_widgets[widgetname],
+                       stringvar=self.named_widgets[stringvarname]):
+                widget["text"] += "\n{}".format(stringvar.get())
+        else:
+            def action(widget=self.named_widgets[widgetname],
+                       stringvar=self.named_widgets[stringvarname]):
+                widget.config(text=stringvar.get())
         return action
 
     def startElement(self, name, attrs):
-        """Determines whether to create a new widget and add it to the tree or to
-        modify the last widget.
+        """Determines whether to create a new widget and add it to the tree or
+        to modify the last widget.
 
         :param name: The name of the XML tag.
         :type name: str
@@ -48,12 +53,14 @@ class XmlTk(sax.ContentHandler):
         :type attrs: xml.sax.Attributes
         """
 
-        # This section allows a name passed to the Button tag to be evaluated to
-        # some function name. It could also be a lambda; please dont.
+        # This section handles certain attributes that require some boilerplate,
+        # such as button commands and StringVars for text entry fields.
         widget_name = None
         _ = dict()
         for k,v in attrs.items():
             if k == "command":
+                # TODO: Probably some safety checks or sandboxing or something
+                # other than just blindly executing arbitrary code
                 _[k] = eval(v)
             elif k == "name":
                 widget_name = v
@@ -71,26 +78,32 @@ class XmlTk(sax.ContentHandler):
             for k,v in attrs.items():
                 getattr(self.current, k)(v)
 
-        # Unfortunately, alignment of widgets is a mutator instead of an
-        # argument to the widget's constructor, so it needs a special tag
-        elif name == "grid":
-            self.current.grid(**attrs)
-            self.current = Dummy(self.current)
-
+        # The StringVar tag is only used if the StringVar in question needs a
+        # default value. If the tag is omitted, an empty StringVar is created
+        # the first time it is referenced.
         elif name == "StringVar":
             self.current = Dummy(self.current)
             var = tkinter.StringVar(**attrs)
             if widget_name:
                 self.named_widgets[widget_name] = var
 
-        # Create the widget, passing in the attributes as keyword arguments
         else:
-            self.current = locate("tkinter.{}".format(name))(self.current, **attrs)
-            if not self.root:
-                self.root = self.current
-            self.current.grid()
-            if widget_name:
-                self.named_widgets[widget_name] = self.current
+            WidgetType = locate("tkinter.{}".format(name))
+            if WidgetType:
+                # Create the widget specified by the tag, passing in the
+                # attributes as keyword arguments
+                self.current = WidgetType(self.current, **attrs)
+                if not self.root:
+                    self.root = self.current
+                self.current.grid()
+                if widget_name:
+                    self.named_widgets[widget_name] = self.current
+            else:
+                # If the tag is not a valid Widget, assume it's a mutator that
+                # should be called on the current Widget
+                getattr(self.current, name)(**attrs)
+                self.current = Dummy(self.current)
+
 
     def endElement(self, name):
         """Go back up the tree in preperation to create the next widget.

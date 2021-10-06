@@ -1,18 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Tk geometry="800x600" title="XML Test Window">
     <Frame>
-        <Label name="label" text="This is a test window written in XML." anchor="w" >
+        <Label name="label" text="This is a test window written in XML." anchor="w" justify="left">
             <grid row="0" column="0" columnspan="3" sticky="ew" />
         </Label>
         <StringVar name="entrytext" value="You can edit this field to update the label." />
         <Entry textvariable="entrytext" width="45">
-            <grid row="1" column="0" />
+            <grid row="1" column="0" columnspan="3" sticky="ew" />
         </Entry>
-        <Button text="Submit" command="self.updateText('label', 'entrytext')">
-            <grid row="1" column="1" />
+        <Button text="Append" command="self.updateText('label', 'entrytext', True)">
+            <grid row="2" column="0" />
+        </Button>
+        <Button text="Replace" command="self.updateText('label', 'entrytext')">
+            <grid row="2" column="1" />
         </Button>
         <Button text="Quit" command="self.root.quit">
-            <grid row="1" column="2" />
+            <grid row="2" column="2" />
         </Button>
     </Frame>
 </Tk>
