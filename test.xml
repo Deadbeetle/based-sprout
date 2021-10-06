@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Tk geometry="800x600" title="XML Test Window">
     <Frame>
-        <Label name="label" text="This is a test window written in XML.">
-            <grid row="0" column="0" columnspan="3" />
+        <Label name="label" text="This is a test window written in XML." anchor="w" >
+            <grid row="0" column="0" columnspan="3" sticky="ew" />
         </Label>
-        <Entry textvariable="entrytext">
+        <StringVar name="entrytext" value="You can edit this field to update the label." />
+        <Entry textvariable="entrytext" width="45">
             <grid row="1" column="0" />
         </Entry>
         <Button text="Submit" command="self.updateText('label', 'entrytext')">
