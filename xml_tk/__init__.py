@@ -1,5 +1,6 @@
 from xml import sax
 from pydoc import locate
+import ast
 import tkinter
 
 class Dummy:
@@ -9,7 +10,32 @@ class Dummy:
     def __init__(self, master):
         self.master = master
 
-# Converts tags into a tree of Tk widgets.
+buttonCommands = dict()
+buttonCommandGenerators = dict()
+
+def buttonCommand(*args, **kwargs):
+    """Decorator for exposing functions to buttons. This decorator ensures that
+    XML that would execute malicious code can't actually run.
+    :param args: The function if used as @buttonCommand, or nothing if kwargs
+                 are passed.
+    """
+    if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
+        func = args[0]
+        buttonCommands[func.__name__] = func
+        return func
+    else:
+        def Inner(func):
+            if "selfcall" in kwargs and kwargs["selfcall"]:
+                funcname = "self.{}".format(func.__name__)
+            else:
+                funcname = func.__name__
+            if "generator" in kwargs and kwargs["generator"]:
+                buttonCommandGenerators[funcname] = func
+            else:
+                buttonCommands[funcname] = func
+            return func
+        return Inner
+
 class XmlTk(sax.ContentHandler):
     def __init__(self, filename, master=tkinter.Tk()):
         """Creates a parser with self as the handler.
@@ -25,6 +51,13 @@ class XmlTk(sax.ContentHandler):
         self.named_widgets = dict()
         sax.parse(filename, self)
 
+    @buttonCommand(selfcall=True)
+    def quit(self):
+        """Helper function for exposing the quit command to buttons.
+        """
+        self.root.quit()
+
+    @buttonCommand(generator=True, selfcall=True)
     def updateText(self, widgetname, stringvarname, append=False):
         """Helper function for updating text with buttons.
 
@@ -59,9 +92,22 @@ class XmlTk(sax.ContentHandler):
         _ = dict()
         for k,v in attrs.items():
             if k == "command":
-                # TODO: Probably some safety checks or sandboxing or something
-                # other than just blindly executing arbitrary code
-                _[k] = eval(v)
+                cmd, *args = v.split(" ")
+                selfcall = True if cmd.startswith("self.") else False
+                for i in range(len(args)):
+                    try:
+                        args[i] = ast.literal_eval(args[i])
+                    except:
+                        pass
+                if selfcall:
+                    args = [self, *args]
+                if len(args) > 1 and cmd in buttonCommandGenerators:
+                    _[k] = buttonCommandGenerators[cmd](*args)
+                elif cmd in buttonCommands:
+                    if selfcall:
+                        _[k] = getattr(self, ".".join(cmd.split(".")[1:]))
+                    else:
+                        _[k] = buttonCommands[cmd]
             elif k == "name":
                 widget_name = v
             elif k == "textvariable":
@@ -86,7 +132,6 @@ class XmlTk(sax.ContentHandler):
             var = tkinter.StringVar(**attrs)
             if widget_name:
                 self.named_widgets[widget_name] = var
-
         else:
             WidgetType = locate("tkinter.{}".format(name))
             if WidgetType:

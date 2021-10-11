@@ -8,13 +8,13 @@
         <Entry textvariable="entrytext" width="45">
             <grid row="1" column="0" columnspan="3" sticky="ew" />
         </Entry>
-        <Button text="Append" command="self.updateText('label', 'entrytext', True)">
+        <Button text="Append" command="self.updateText label entrytext True">
             <grid row="2" column="0" />
         </Button>
-        <Button text="Replace" command="self.updateText('label', 'entrytext')">
+        <Button text="Replace" command="self.updateText label entrytext">
             <grid row="2" column="1" />
         </Button>
-        <Button text="Quit" command="self.root.quit">
+        <Button text="Quit" command="self.quit">
             <grid row="2" column="2" />
         </Button>
     </Frame>
